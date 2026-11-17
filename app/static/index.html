@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Clip Studio</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>🤖 AI Clip Studio</h1>
+    <p class="sub">Paste a video link. AI finds the viral moments and sends clips back to the chat.</p>
+  </header>
+
+  <main>
+    <label for="videoUrl">Video URL</label>
+    <input
+      id="videoUrl"
+      type="url"
+      placeholder="https://youtube.com/watch?v=..."
+      autocomplete="off"
+    />
+
+    <button id="submitBtn">✨ Generate Clips</button>
+
+    <div id="status" class="status hidden"></div>
+
+    <section id="tips" class="tips">
+      <h2>How it works</h2>
+      <ol>
+        <li>I download and transcribe the video</li>
+        <li>AI detects funny, intense, or shocking moments</li>
+        <li>I cut, crop, caption, and send each clip to this chat</li>
+      </ol>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
