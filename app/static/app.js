@@ -12,9 +12,18 @@ function showStatus(msg, kind = "info") {
   statusEl.classList.remove("hidden");
 }
 
+async function readError(res) {
+  const text = await res.text();
+  try {
+    const json = JSON.parse(text);
+    return json.detail || json.message || text;
+  } catch {
+    return text.slice(0, 300);
+  }
+}
+
 submitBtn.addEventListener("click", async () => {
   const videoUrl = document.getElementById("videoUrl").value.trim();
-
   if (!videoUrl) {
     showStatus("Paste a video URL first.", "error");
     return;
@@ -34,15 +43,13 @@ submitBtn.addEventListener("click", async () => {
     });
 
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "Request failed");
+      const msg = await readError(res);
+      throw new Error(`HTTP ${res.status}: ${msg}`);
     }
 
     const data = await res.json();
     showStatus(`✅ ${data.message}`, "success");
     tg.HapticFeedback.notificationOccurred("success");
-
-    // Close the Mini App—results will arrive in the chat
     setTimeout(() => tg.close(), 1500);
   } catch (err) {
     showStatus(`❌ ${err.message}`, "error");
