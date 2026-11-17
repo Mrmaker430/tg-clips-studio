@@ -19,8 +19,5 @@ RUN python -c "from faster_whisper import WhisperModel; WhisperModel('base', dev
 
 EXPOSE 8000
 
-CMD ["gunicorn", "app.main:app", \
-     "--bind", "0.0.0.0:$PORT", \
-     "--workers", "2", \
-     "--timeout", "120", \
-     "--worker-class", "uvicorn.workers.UvicornWorker"]
+# Shell form so $PORT is expanded by the shell at runtime
+CMD ["sh", "-c", "exec gunicorn app.main:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --worker-class uvicorn.workers.UvicornWorker"]
