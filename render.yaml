@@ -1,11 +1,9 @@
 services:
-  # 1. Redis (Key Value) — message broker
   - type: redis
     name: clip-redis
     plan: free
     ipAllowList: []
 
-  # 2. Web Service — FastAPI + Aiogram webhook
   - type: web
     name: clip-api
     runtime: docker
@@ -13,7 +11,7 @@ services:
     plan: free
     envVars:
       - key: BOT_TOKEN
-        sync: false          # set manually in Render dashboard
+        sync: false
       - key: REDIS_URL
         fromService:
           type: redis
@@ -23,14 +21,23 @@ services:
         sync: false
       - key: WEBAPP_URL
         sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://api.openai.com/v1
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: WHISPER_MODEL
+        value: base
+      - key: MAX_CLIPS
+        value: "6"
 
-  # 3. Background Worker — Celery + FFmpeg
   - type: worker
     name: clip-worker
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerCommand: celery -A worker.celery_app worker --loglevel=info --concurrency=1
-    plan: starter           # Workers cannot run on the free tier
+    plan: standard
     envVars:
       - key: BOT_TOKEN
         sync: false
@@ -39,7 +46,17 @@ services:
           type: redis
           name: clip-redis
           property: connectionString
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://api.openai.com/v1
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: WHISPER_MODEL
+        value: base
+      - key: MAX_CLIPS
+        value: "6"
     disk:
       name: clip-tmp
       mountPath: /tmp
-      sizeGB: 1            # Persistent disk for temporary video files
+      sizeGB: 2
