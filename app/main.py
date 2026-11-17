@@ -1,6 +1,9 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.types import Update
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,15 +13,49 @@ from app.api.v1.clips import router as clips_router
 from app.bot.dispatcher import dp
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 bot = Bot(token=settings.BOT_TOKEN)
+
+
+async def _setup_webhook(retries: int = 5) -> None:
+    """Set webhook with FloodWait-aware retries. Never raises."""
+    url = f"{settings.WEBHOOK_BASE_URL}/webhook"
+    for attempt in range(1, retries + 1):
+        try:
+            await bot.set_webhook(url, drop_pending_updates=False)
+            logger.info(f"Webhook set: {url}")
+            return
+        except TelegramRetryAfter as e:
+            logger.warning(
+                f"FloodWait {e.retry_after}s setting webhook "
+                f"(attempt {attempt}/{retries})"
+            )
+            await asyncio.sleep(e.retry_after + 1)
+        except Exception as e:
+            logger.warning(
+                f"Webhook setup attempt {attempt}/{retries} failed: {e}"
+            )
+            await asyncio.sleep(2 * attempt)
+    logger.error("Webhook setup failed after all retries — continuing anyway")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    webhook_url = f"{settings.WEBHOOK_BASE_URL}/webhook"
-    await bot.set_webhook(webhook_url, drop_pending_updates=True)
+    # Never let webhook bootstrap kill the app
+    try:
+        await _setup_webhook()
+    except Exception:
+        logger.exception("Webhook bootstrap failed; app will still serve")
+
     yield
-    await bot.delete_webhook()
+
+    # Close the aiohttp session cleanly (fixes the "Unclosed connector" warnings)
+    try:
+        await bot.session.close()
+    except Exception:
+        pass
 
 
 app = FastAPI(title="AI Clip Studio", lifespan=lifespan)
