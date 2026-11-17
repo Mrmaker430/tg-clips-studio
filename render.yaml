@@ -1,0 +1,45 @@
+services:
+  # 1. Redis (Key Value) — message broker
+  - type: redis
+    name: clip-redis
+    plan: free
+    ipAllowList: []
+
+  # 2. Web Service — FastAPI + Aiogram webhook
+  - type: web
+    name: clip-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: BOT_TOKEN
+        sync: false          # set manually in Render dashboard
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: clip-redis
+          property: connectionString
+      - key: WEBHOOK_BASE_URL
+        sync: false
+      - key: WEBAPP_URL
+        sync: false
+
+  # 3. Background Worker — Celery + FFmpeg
+  - type: worker
+    name: clip-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerCommand: celery -A worker.celery_app worker --loglevel=info --concurrency=1
+    plan: starter           # Workers cannot run on the free tier
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: clip-redis
+          property: connectionString
+    disk:
+      name: clip-tmp
+      mountPath: /tmp
+      sizeGB: 1            # Persistent disk for temporary video files
